@@ -7,13 +7,13 @@ module init_mod
   real, parameter :: maxvars = 50              !< The maximum number of fields expected in a source file
 
   type :: vardefs
-     character(len= 10)   :: var_name          !< A variable's variable name
+     character(len= 20)   :: var_name          !< A variable's variable name
      character(len=120)   :: long_name         !< A variable's long name
      character(len= 20)   :: units             !< A variable's unit
-     character(len= 10)   :: var_remapmethod   !< A variable's mapping method
+     character(len= 20)   :: var_remapmethod   !< A variable's mapping method
      integer              :: var_dimen         !< A variable's dimensionality
      character(len=  4)   :: var_grid          !< A variable's input grid location; all output locations are on cell centers
-     character(len= 10)   :: var_pair          !< A variable's pair
+     character(len= 20)   :: var_pair          !< A variable's pair
      character(len=  4)   :: var_pair_grid     !< A pair variable grid
      real                 :: var_fillvalue     !< A variable's fillvalue
   end type vardefs
@@ -50,7 +50,7 @@ contains
     ! local variable
     character(len=40) :: fname
     integer :: ierr, iounit
-    integer :: srcdims(3), dstdims(2)
+    integer :: srcdims(2), dstdims(2)
 
     namelist /ocnicepost_nml/ ftype, srcdims, wgtsdir, dstdims, maskvar, sinvar, cosvar, &
          angvar, debug
@@ -65,8 +65,8 @@ contains
     fname = 'ocnicepost.nml'
     inquire (file=trim(fname), iostat=ierr)
     if (ierr /= 0) then
-       write (6, '(3a)') 'Error: input file "', trim(fname), '" does not exist.'
-       stop
+       write (0, '(3a)') 'FATAL ERROR: input file "', trim(fname), '" does not exist.'
+       stop 1
     end if
 
     ! Open and read namelist file.
@@ -78,12 +78,11 @@ contains
     close (iounit)
     nxt = srcdims(1); nyt = srcdims(2)
     nxr = dstdims(1); nyr = dstdims(2)
-    If (srcdims(3) > 0) nlevs = srcdims(3)
 
     ! initialize the source file type and variables
     if (trim(ftype) == 'ocean') then
        do_ocnpost = .true.
-       else
+    else
        do_ocnpost = .false.
     end if
     input_file = trim(ftype)//'.nc'
@@ -98,18 +97,18 @@ contains
     if (nxt == 360  .and. nyt == 320) fsrc = 'mx100'     ! 1deg tripole
     if (nxt == 72   .and. nyt == 35) fsrc = 'mx500'      ! 5deg tripole
     if (len_trim(fsrc) == 0) then
-       write(logunit,'(a)')'source grid dimensions unknown'
-       stop
+       write(0,'(a)')'FATAL ERROR: source grid dimensions unknown'
+       stop 2
     end if
 
     fdst = ''
     if (nxr == 1440 .and. nyr == 721) fdst = '0p25'      ! 1/4deg rectilinear
-    if (nxr == 720  .and. nyr == 361) fdst = '0p5'       ! 1/2 deg rectilinear
-    if (nxr == 360  .and. nyr == 181) fdst = '1p0'       ! 1 deg rectilinear
-    if (nxr == 72   .and. nyr == 36) fdst = '5p0'        ! 5 deg rectilinear
+    if (nxr == 720  .and. nyr == 361) fdst = '0p50'      ! 1/2 deg rectilinear
+    if (nxr == 360  .and. nyr == 181) fdst = '1p00'      ! 1 deg rectilinear
+    if (nxr == 72   .and. nyr == 36) fdst = '5p00'       ! 5 deg rectilinear
     if (len_trim(fdst) == 0) then
-       write(logunit,'(a)')'destination grid dimensions unknown'
-       stop
+       write(0,'(a)')'FATAL ERROR: destination grid dimensions unknown'
+       stop 3
     end if
 
     !TODO: test for consistency of source/destination resolution
@@ -121,7 +120,7 @@ contains
 
     character(len= 40) :: fname
     character(len=100) :: chead
-    character(len= 10) :: c1,c3,c4,c5,c6
+    character(len= 20) :: c1,c3,c4,c5,c6
     integer :: i2
     integer :: nn,n,ierr,iounit
 
@@ -132,8 +131,8 @@ contains
     fname=trim(ftype)//'.csv'
     open(newunit=iounit, file=trim(fname), status='old', iostat=ierr)
     if (ierr /= 0) then
-       write (6, '(3a)') 'Error: input file "', trim(fname), '" does not exist.'
-       stop
+       write (0, '(3a)') 'FATAL ERROR: input file "', trim(fname), '" does not exist.'
+       stop 4
     end if
 
     read(iounit,*)chead

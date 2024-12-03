@@ -1,7 +1,7 @@
 module utils_mod
 
   use netcdf
-  use init_mod, only : debug, logunit, vardefs
+  use init_mod, only : debug, logunit, vardefs, fsrc
 
   implicit none
 
@@ -164,10 +164,10 @@ contains
 
     if (debug)write(logunit,'(a)')'enter '//trim(subname)
 
-    wgtsfile = trim(wdir)//'tripole.mx025.'//vgrid1//'.to.Ct.bilinear.nc'
+    wgtsfile = trim(wdir)//'tripole.'//trim(fsrc)//'.'//vgrid1//'.to.Ct.bilinear.nc'
     call getfield(fname, vname1, dims=dims, field=vecpair(:,1), wgts=trim(wgtsfile))
     if (debug)write(logunit,'(a)')'wgtsfile for 2d vector '//trim(vname1)//'   '//trim(wgtsfile)
-    wgtsfile = trim(wdir)//'tripole.mx025.'//vgrid2//'.to.Ct.bilinear.nc'
+    wgtsfile = trim(wdir)//'tripole.'//trim(fsrc)//'.'//vgrid2//'.to.Ct.bilinear.nc'
     call getfield(fname, vname2, dims=dims, field=vecpair(:,2), wgts=trim(wgtsfile))
     if (debug)write(logunit,'(a)')'wgtsfile for 2d vector '//trim(vname2)//'   '//trim(wgtsfile)
 
@@ -203,9 +203,9 @@ contains
 
     if (debug)write(logunit,'(a)')'enter '//trim(subname)
 
-    wgtsfile = trim(wdir)//'tripole.mx025.'//vgrid1//'.to.Ct.bilinear.nc'
+    wgtsfile = trim(wdir)//'tripole.'//trim(fsrc)//'.'//vgrid1//'.to.Ct.bilinear.nc'
     call getfield(fname, vname1, dims=dims, field=vecpair(:,:,1), wgts=trim(wgtsfile))
-    wgtsfile = trim(wdir)//'tripole.mx025.'//vgrid2//'.to.Ct.bilinear.nc'
+    wgtsfile = trim(wdir)//'tripole.'//trim(fsrc)//'.'//vgrid2//'.to.Ct.bilinear.nc'
     call getfield(fname, vname2, dims=dims, field=vecpair(:,:,2), wgts=trim(wgtsfile))
 
     do k = 1,dims(3)
@@ -568,7 +568,7 @@ contains
     call nf90_err(nf90_def_dim(ncid, 'nx', dims(1), idimid), 'define dimension: nx')
     call nf90_err(nf90_def_dim(ncid, 'ny', dims(2), jdimid), 'define dimension: ny')
     call nf90_err(nf90_def_var(ncid, vname, nf90_float, (/idimid,jdimid/), varid), 'define variable: '//vname)
-    call nf90_err(nf90_enddef(ncid), 'nf90_enddef:'//fname)
+    call nf90_err(nf90_enddef(ncid), 'nf90_enddef: '//fname)
 
     a2d(:,:) =  reshape(field(1:dims(1)*dims(2)), (/dims(1),dims(2)/))
     call nf90_err(nf90_put_var(ncid, varid, a2d), 'put variable: '//vname)
@@ -586,8 +586,12 @@ contains
     integer ,         intent(in) :: ierr
     character(len=*), intent(in) :: string
     if (ierr /= nf90_noerr) then
-      write(logunit,'(a)') '*** FATAL ERROR ***: '//trim(string)//':'//trim(nf90_strerror(ierr))
-      stop
+      write(0, '(a)') 'FATAL ERROR: ' // trim(string)// ' : ' // trim(nf90_strerror(ierr))
+      ! This fails on WCOSS2 with Intel 19 compiler. See
+      ! https://community.intel.com/t5/Intel-Fortran-Compiler/STOP-and-ERROR-STOP-with-variable-stop-codes/m-p/1182521#M149254
+      ! When WCOSS2 moves to Intel 2020+, uncomment the next line and remove stop 99
+      !stop ierr
+      stop 99
     end if
   end subroutine nf90_err
 end module utils_mod
