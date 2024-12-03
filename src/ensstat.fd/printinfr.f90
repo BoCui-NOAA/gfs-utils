@@ -4,6 +4,9 @@ subroutine printinfr(gfld,ivar)
 !
 ! PRGMMR: Bo Cui         DATE: 2013-06-11
 !
+! PROGRAM HISTORY LOG: 
+!   2024-11-27  Bo Cui: added to check for undefined values
+!
 ! USAGE:   print grib2 data information
 !
 ! INPUT:  gfld,ivar 
@@ -20,18 +23,31 @@ integer :: currlen=0
 logical :: unpack=.true.
 
 integer kf,j,ivar,i
-real    fldmin,fldmax
+real    fldmin,fldmax,sample
 
-!kf=gfld%ngrdpts
-kf=gfld%ndpts   
+kf=gfld%ngrdpts
 
-fldmin=gfld%fld(1)
-fldmax=gfld%fld(1)
+if (gfld%fld(1) .eq. 9.9990003E+20 ) then  ! checking undefined values
+  fldmax=0.0
+  fldmin=99999.99
+else
+  fldmax=gfld%fld(1)
+  fldmin=gfld%fld(1)
+endif
 
 do j=2,kf               
+  if (gfld%fld(j) .eq. 9.9990003E+20 ) then ! checking undefined values
+    cycle
+  end if
   if (gfld%fld(j).gt.fldmax) fldmax=gfld%fld(j)
   if (gfld%fld(j).lt.fldmin) fldmin=gfld%fld(j)
 enddo
+
+if (gfld%fld(8601) .eq. 9.9990003E+20 ) then
+  sample=-9999999.
+else
+  sample=gfld%fld(8601)
+endif
 
 ! print out
 
@@ -48,21 +64,21 @@ if(gfld%ipdtnum.eq.11.or.gfld%ipdtnum.eq.12) then
   write(6,102) ivar,gfld%ipdtnum,(gfld%ipdtmpl(i),i=1,3),gfld%ipdtmpl(10),gfld%ipdtmpl(12),   &
                     (gfld%idsect(i),i=6,9),gfld%ipdtmpl(9),gfld%ipdtmpl(30),  &
                     (gfld%ipdtmpl(i),i=16,17), &
-                     kf,fldmax,fldmin,gfld%fld(8601)
+                     kf,fldmax,fldmin,sample          
   write(6,*) 
 
 elseif(gfld%ipdtnum.eq.8.or.gfld%ipdtnum.eq.0) then
   write(6,300) 
   write(6,302) ivar,gfld%ipdtnum,(gfld%ipdtmpl(i),i=1,3),gfld%ipdtmpl(10),gfld%ipdtmpl(12),   &
                     (gfld%idsect(i),i=6,9),gfld%ipdtmpl(9), &
-                     kf,fldmax,fldmin,gfld%fld(8601)
+                     kf,fldmax,fldmin,sample           
   write(6,*) 
 
 else
   write(6,200) 
   write(6,202) ivar,gfld%ipdtnum,(gfld%ipdtmpl(i),i=1,3),gfld%ipdtmpl(10),gfld%ipdtmpl(12),   &
                     (gfld%idsect(i),i=6,9),gfld%ipdtmpl(9),(gfld%ipdtmpl(i),i=16,17), &
-                     kf,fldmax,fldmin,gfld%fld(8601)
+                     kf,fldmax,fldmin,sample           
   write(6,*) 
 endif
 

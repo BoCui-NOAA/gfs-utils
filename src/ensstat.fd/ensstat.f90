@@ -31,6 +31,8 @@ program ens_avgspr_g2
 ! modified by:
 !   Xianwu Xue 05/11/2018
 !      added 'navg_min' from namelist to determine the minimum members
+!   Bo Cui     11/26/2024
+!      Added to check for undefined values
 !$$$
 
 use grib_mod
@@ -71,6 +73,8 @@ character*255 cfopg1,cfopg2
 
 real    gmin,gmax
 integer nbit
+
+logical :: skipLoop
 
 integer :: navg_min = 10
 
@@ -235,27 +239,41 @@ if(nfiles.gt.2) then
       ! end of imem loop, calculate ensemble mean and spread
 
       print *, '   '; print *,' variable has member',inum; print *, '   '
-      if(inum.gt.navg_min) then
 
-        print *, '   '; print *,  ' Combined Ensemble Data Example at Point 8601 '
-        write (*,'(10f8.1)') (fgrid(8601,i),i=1,inum)
-        print *, '   '
+      if(inum.gt.navg_min) then
 
         do n=1,maxgrd
 
-          fst(1:inum)=fgrid(n,1:inum)
-
+          skipLoop = .false.
           do i=1,inum
-            weight(i)=1/float(inum)
+            if(fgrid(n,i).eq.9.9990003E+20 ) then  ! checking undefined values
+              ens_avg(n)=9.9990003E+20    
+              ens_spr(n)=9.9990003E+20 
+              skipLoop = .true.
+              exit  ! exit inner loop
+            endif
           enddo
 
-          ens_avg(n)=epdf(fst,weight,inum,1.0,0)
-          ens_spr(n)=epdf(fst,weight,inum,2.0,0)
+         ! Only proceed with calculations if skipLoop is not true
+
+          if (.not. skipLoop) then
+
+            if(n.eq.8601) then
+              print *, '   '; print *,  ' Combined Ensemble Data Example at Point 8601 '
+              write (*,'(10f8.1)') (fgrid(8601,i),i=1,inum)
+              print *, '   '
+            endif
+
+            fst(1:inum)=fgrid(n,1:inum)
+            do i=1,inum
+              weight(i)=1/float(inum)
+            enddo
+            ens_avg(n)=epdf(fst,weight,inum,1.0,0)
+            ens_spr(n)=epdf(fst,weight,inum,2.0,0)
+
+          endif
 
         enddo
-
-        print *, 'ens_avg(8601)= ',ens_avg(8601)
-        print *, 'ens_spr(8601)= ',ens_spr(8601)
 
         print *, '   '
         print *, '----- Output ensemble average and spread for Current Time ------'
@@ -319,8 +337,6 @@ if(nfiles.gt.2) then
 
         ! get the number of bits
         ! gfldo%idrtmpl(3) : GRIB2 DRT 5.40 decimal scale factor
-
-        write(6,*) 'gfldo%idrtmpl(3)=',gfldo%idrtmpl(3)
 
         call gtbits(0,gfldo%idrtmpl(3),maxgrd,0,ens_avg,gmin,gmax,nbit)
 
